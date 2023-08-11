@@ -8,7 +8,7 @@ from helpers_test import runTest
 np.random.seed(42)
 
 # read user input
-allowed_tags = ["SPLINE", "PIECEWISELINEAR", "SPLINEFINE"]
+allowed_tags = ["NORMAL", "FINE"]
 if len(sys.argv) > 1:
     example_tag = sys.argv[1]
 else:
@@ -29,14 +29,10 @@ rhs = np.random.randn(N - 1, l_sketch) + 1j * np.random.randn(N - 1, l_sketch)
 train_nonpar = lambda L, center, radius, args_nonpar: beyn(L, center, radius, *args_nonpar)
 args_nonpar = (lhs, rhs, 1000, 1e-10, 5)
 d_thresh, min_patch_deltap = 1e-1, 1e-2
-if example_tag == "SPLINEFINE":
+if example_tag == "NORMAL":
+    tol, interp_kind, patch_width = 1e-2, "spline3", 7
+elif example_tag == "FINE":
     tol, interp_kind, patch_width = 1e-6, "spline7", 11
-else:
-    tol = 1e-2
-    if example_tag == "SPLINEFINE":
-        interp_kind, patch_width = "linear", None
-    elif example_tag == "PIECEWISELINEAR":
-        interp_kind, patch_width = "spline3", 7
 
 # train
 model, ps_train = train(L, train_nonpar, args_nonpar, center, radius, interp_kind,
