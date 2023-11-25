@@ -12,9 +12,7 @@ def runTest(ps, coarsen, get_approx, get_exact):
         Napp = len(v_app)
         if Napp > val_app.shape[1]: # enlarge arrays for storage
             dN = Napp - val_app.shape[1]
-            val_ref = np.pad(val_app, [(0, 0), (0, dN)], constant_values = np.inf)
-            val_app = np.pad(val_app, [(0, 0), (0, dN)], constant_values = np.inf)
-            error = np.pad(val_app, [(0, 0), (0, dN)], constant_values = np.nan)
+            val_app = np.pad(val_app, [(0, 0), (0, dN)], constant_values = np.inf + 1j*np.inf)
         val_app[j, : Napp] = v_app
         
         # compute error
@@ -23,9 +21,8 @@ def runTest(ps, coarsen, get_approx, get_exact):
             Nref = len(v_ref)
             if Nref > val_ref.shape[1]: # enlarge arrays for storage
                 dN = Nref - val_ref.shape[1]
-                val_ref = np.pad(val_app, [(0, 0), (0, dN)], constant_values = np.inf)
-                val_app = np.pad(val_app, [(0, 0), (0, dN)], constant_values = np.inf)
-                error = np.pad(val_app, [(0, 0), (0, dN)], constant_values = np.nan)
+                val_ref = np.pad(val_ref, [(0, 0), (0, dN)], constant_values = np.inf + 1j*np.inf)
+                error = np.pad(error, [(0, 0), (0, dN)], constant_values = np.nan)
             val_ref[j // coarsen, : Nref] = v_ref
 
             if Nref == Napp:

@@ -46,12 +46,11 @@ def clusterMatchedData(p, data, dists, d_thresh, min_patch_deltap):
         deltaps = np.array([p[j + 1] - p[j] for j in range(len(p) - 1)])
     return mergeClusters(clusters, deltaps, min_patch_deltap)
 
-def train(L, solve_nonpar, args_nonpar, center, radius, interp_kind,
-          patch_width, ps_start, tol, max_iter, d_thresh, min_patch_deltap):
+def train(L, solve_nonpar, center, radius, interp_kind, patch_width, ps_start,
+          tol, max_iter=100, d_thresh=1e-1, min_patch_deltap=1e-2):
     # train approximation model with parameters:
     # L: lambda function defining matrix in eigenproblem
     # solve_nonpar: lambda function defining non-parametric eigensolver
-    # args_nonpar: additional arguments of solve_nonpar
     # center: center of contour (disk)
     # radius: radius of contour (disk)
     # interp_kind: string label of p-interpolation type
@@ -73,7 +72,7 @@ def train(L, solve_nonpar, args_nonpar, center, radius, interp_kind,
     data = []
     for p in ps:
         Lp = lambda z: L(z, p)
-        data += [solve_nonpar(Lp, center, radius, args_nonpar)]
+        data += [solve_nonpar(Lp, center, radius)]
     # train model
     model_out = matchData(data, d_thresh is not None)
     data = list(model_out[0])
@@ -91,7 +90,7 @@ def train(L, solve_nonpar, args_nonpar, center, radius, interp_kind,
             val_pre += [evaluate(model_out, ps, p, center, radius,
                                  interp_kind, patch_width)]
             Lp = lambda z: L(z, p)
-            val_ref += [solve_nonpar(Lp, center, radius, args_nonpar)]
+            val_ref += [solve_nonpar(Lp, center, radius)]
         print()
         to_be_refined = []
         for j in range(len(ps_next)):

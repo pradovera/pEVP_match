@@ -17,14 +17,14 @@ center, radius = 0., 4.
 l_sketch = 5
 lhs = np.random.randn(l_sketch, 3) + 1j * np.random.randn(l_sketch, 3)
 rhs = np.random.randn(3, l_sketch) + 1j * np.random.randn(3, l_sketch)
-train_nonpar = lambda L, center, radius, args_nonpar: beyn(L, center, radius, *args_nonpar)
-args_nonpar = (lhs, rhs, 25, 1e-10)
-ps_train, tol, interp_kind = p_range, 1e-2, "linear"
-patch_width, d_thresh, min_patch_deltap = None, 1e-1, 5
+train_nonpar = lambda L, center, radius: beyn(L, center, radius, lhs, rhs,
+                                              25, 1e-10, 1)
+tol, interp_kind, patch_width, min_patch_deltap = 1e-2, "linear", None, 5
 
 # train
-model, ps_train = train(L, train_nonpar, args_nonpar, center, radius, interp_kind,
-                        patch_width, ps_train, tol, 100, d_thresh, min_patch_deltap)
+model, ps_train = train(L, train_nonpar, center, radius, interp_kind,
+                        patch_width, p_range, tol,
+                        min_patch_deltap = min_patch_deltap)
 
 # test
 ps = np.linspace(*p_range, 1500)
@@ -43,18 +43,28 @@ val_app, val_ref, error = runTest(ps, 1, getApprox, getExact)
 # plot approximation and error
 plt.figure(figsize = (15, 5))
 plt.subplot(141)
-plt.plot(np.real(val_ref), ps, 'r')
-plt.plot(np.real(val_app), ps, 'b:')
+plt.plot(np.real(val_ref[:, 0]), ps, 'ro')
+plt.plot(np.real(val_app[:, 0]), ps, 'b:')
+plt.plot(np.real(val_ref[:, 1:]), ps, 'ro')
+plt.plot(np.real(val_app[:, 1:]), ps, 'b:')
+plt.legend(['exact', 'approx'])
 plt.xlim(-5, 5), plt.ylim(*p_range)
+plt.xlabel("Re(lambda)"), plt.ylabel("p")
 plt.subplot(142)
-plt.plot(np.imag(val_ref), ps, 'r')
-plt.plot(np.imag(val_app), ps, 'b:')
+plt.plot(np.imag(val_ref[:, 0]), ps, 'ro')
+plt.plot(np.imag(val_app[:, 0]), ps, 'b:')
+plt.plot(np.imag(val_ref[:, 1:]), ps, 'ro')
+plt.plot(np.imag(val_app[:, 1:]), ps, 'b')
+plt.legend(['exact', 'approx'])
 plt.xlim(-5, 5), plt.ylim(*p_range)
+plt.xlabel("Im(lambda)"), plt.ylabel("p")
 plt.subplot(143)
 plt.plot([0] * len(ps_train), ps_train, 'bx')
 plt.ylim(*p_range)
+plt.ylabel("sample p-points")
 plt.subplot(144)
 plt.semilogx(error, ps)
 plt.semilogx([tol] * 2, p_range, 'k:')
 plt.ylim(*p_range)
+plt.xlabel("lambda error"), plt.ylabel("p")
 plt.tight_layout(), plt.show()
