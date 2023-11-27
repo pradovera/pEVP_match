@@ -19,7 +19,18 @@ def findLargestFullDiagSubmatrix(A):
     return idx_L
 
 def findClusters(d, thresh, kind = "largest", inf = 1e10):
-    # find clusters by comparing best match with all possible 2nd-best matches
+    """
+    This function finds clusters in a given distance matrix by comparing best match with all possible 2nd-best matches.
+
+    Parameters:
+    d (numpy array): The distance matrix.
+    thresh (float): The threshold for determining clusters.
+    kind (str, optional): The kind of clustering. Allowed values are "smallest", "largest", "sequential". Defaults to "largest".
+    inf (float, optional): The value to replace the diagonal entries of the distance matrix. Defaults to 1e10.
+
+    Returns:
+    list: The clusters found in the distance matrix.
+    """
     if kind not in ["smallest", "largest"]: kind == "sequential"
     S = len(d)
     j_good = np.where(np.diag(d) != 0.)[0]
@@ -58,7 +69,17 @@ def findClusters(d, thresh, kind = "largest", inf = 1e10):
     return clusters
 
 def mergeClusters(cluster_list, deltap_list, min_patch_deltap):
-    # merge clusters based on minimal cluster width
+    """
+    This function merges clusters based on minimal cluster width.
+
+    Parameters:
+    cluster_list (list): The list of clusters.
+    deltap_list (list): The list of delta p values.
+    min_patch_deltap (float): The minimum patch delta p.
+
+    Returns:
+    list: The merged clusters.
+    """
     S = len(cluster_list)
     clusters = []
     for p_j in range(S): # loop over parameters

@@ -2,8 +2,17 @@ from numpy import abs, eye, argmin, argpartition, isinf, any, logical_or, isnan
 from scipy.interpolate import interp1d, make_interp_spline
 
 def interp1d_get_local_idx(p, ps, interp_kind):
-    # get index for local-ish interpolation
-    # allowed values of interp_kind: linear, nearest, nearest-up, previous, next
+    """
+    This function computes the index for local-ish interpolation.
+    
+    Parameters:
+    p (float): The value of p at which the interpolation is requested.
+    ps (numpy array): The array of p-values at which the function is evaluated.
+    interp_kind (str): The type of interpolation. Allowed values are "linear", "nearest", "nearest-up", "previous", and "next".
+
+    Returns:
+    int: The index for local-ish interpolation.
+    """
     if interp_kind not in ["linear", "nearest", "nearest-up", "previous", "next"]:
         raise Exception("Value of interp_kind not allowed")
     if p <= ps[0]: return 0
@@ -24,9 +33,17 @@ def interp1d_get_local_idx(p, ps, interp_kind):
     return j + 1
 
 def interp1d_fast(p, ps, interp_kind):
-    # interpolation weights at p, given support points ps
-    # allowed values of interp_kind: linear, nearest, nearest-up, previous, next, zero, slinear, quadratic, cubic
-    # also allowed is "spline*", with the spline order replacing "*"
+    """
+    This function computes the interpolation weights at p, given support points ps. Returns the interpolant function.
+    
+    Parameters:
+    p (float): The value of p at which the interpolation is requested.
+    ps (numpy array): The array of p-values at which the function is evaluated.
+    interp_kind (str): The type of interpolation. Allowed values are "linear", "nearest", "nearest-up", "previous", "next", "zero", "slinear", "quadratic", "cubic", and "spline*", with the spline order replacing "*".
+
+    Returns:
+    function: A function that takes an array x and returns the interpolated value at p.
+    """
     if interp_kind in ["linear", "nearest", "nearest-up", "previous", "next"]:
         if p <= ps[0]: return lambda x: x[0] # clip to range
         if p >= ps[-1]: return lambda x: x[-1] # clip to range
@@ -59,6 +76,18 @@ def interp1d_fast(p, ps, interp_kind):
     return lambda x: sum([w * x_ for w, x_ in zip(weights, x)])
 
 def interp1d_inf(p, ps, values, interp_kind):
+    """
+    Computes interpolation weights at p as interp1d_fast(), but allows also infinite values.
+
+    Parameters:
+    p (float): The value of p at which the interpolation is requested.
+    ps (numpy array): The array of p-values at which the function is evaluated.
+    values (numpy array): The array of function values at the p-values.
+    interp_kind (str): The type of interpolation. Allowed values are "linear", "nearest", "nearest-up", "previous", "next".
+
+    Returns:
+    float: The interpolated value at p.
+    """
     # interpolation weights at p, allowing also infinite values
     if hasattr(values[0], "__len__") and len(values[0]) > 1:
         isinf_eff = lambda x: any(logical_or(isinf(x), isnan(x)))

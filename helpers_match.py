@@ -2,6 +2,16 @@ import numpy as np
 from scipy.optimize import linear_sum_assignment
 
 def matchBase(dist):
+    """
+    This function performs a matching operation based on a distance matrix.
+
+    Parameters:
+    dist (numpy array): The distance matrix.
+
+    Returns:
+    tuple: The matched indices and the distance matrix.
+    """
+    
     # linear_sum_assignment does not accept inf entries -> remove inf values!
     inf_0, inf_1 = np.all(np.isinf(dist), axis = 1), np.all(np.isinf(dist), axis = 0)
     notinf_0 = np.where(np.logical_not(inf_0))[0]
@@ -29,6 +39,16 @@ def matchBase(dist):
     return (match_0, match_1), dist
 
 def match(values_0, values_1):
+    """
+    This function matches two sets of values based on their distances.
+
+    Parameters:
+    values_0 (numpy array): The first set of values.
+    values_1 (numpy array): The second set of values.
+
+    Returns:
+    tuple: The matched indices and the distance matrix.
+    """
     # assemble distance matrix
     dist = np.empty((len(values_0), len(values_1)))
     # improve robustness when inf are involved

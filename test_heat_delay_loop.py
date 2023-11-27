@@ -13,7 +13,7 @@ if len(sys.argv) > 1:
 else:
     example_tag = input(("Input example_tag:\n(Allowed values: {})\n").format(allowed_tags))
 
-# define problem
+# define problem of section 6.3
 z_shift = -1.
 N, l, k, f0, f1, t1, t2 = 5000, np.pi, .02, -.1, .05, 1., 2.
 stiff = sparse.diags([-2 * np.ones(N - 1)] + [np.ones(N - 2)] * 2, [0, -1, 1], format = "csr") * (N / l) ** 2

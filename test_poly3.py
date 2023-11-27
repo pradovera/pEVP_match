@@ -5,7 +5,7 @@ from solver_parametric import train, evaluate
 from helpers_test import runTest
 np.random.seed(42)
 
-# define problem
+# define problem of Section 6.1
 A = np.array([[0, 0, 1], [1, 0, 2], [0, 1, 0]])
 B = np.array([[0, 0, -2], [0, 0, -1], [0, 0, 0]])
 C = np.eye(3)

@@ -7,15 +7,22 @@ def solveLS(A, b):
     return spsolve(A, b)
 
 def beyn(L, center, radius, lhs, rhs, N_quad, rank_tol, hankel = 1):
-    # find approximate eigenvalues of non-parametric problem
-    # L: lambda function defining matrix in eigenproblem
-    # center: center of contour (disk)
-    # radius: radius of contour (disk)
-    # lhs: left-sketching matrix
-    # rhs: right-sketching matrix
-    # N_quad: number of quadrature points
-    # rank_tol: tolerance for rank truncation
-    # hankel: size of block-Hankel matrices
+    """    
+    This function computes approximate eigenvalues of non-parametric eigenproblems through Beyn's contour integral method
+    
+    Parameters:
+    L: lambda function defining matrix in eigenproblem
+    center: center of contour (disk)
+    radius: radius of contour (disk)
+    lhs: left-sketching matrix
+    rhs: right-sketching matrix
+    N_quad: number of quadrature points
+    rank_tol: tolerance for rank truncation
+    hankel: size of block-Hankel matrices
+    
+    Returns:
+    vals: approximate eigenvalues
+    """
     ts = center + radius * np.exp(1j * np.linspace(0., 2 * np.pi, N_quad + 1)[: -1])
     res_flat = np.array([(lhs @ solveLS(L(t), rhs)).reshape(-1) for t in ts])
     dft = ts.reshape(-1, 1) ** (1 + np.arange(2 * hankel))

@@ -2,6 +2,20 @@ import numpy as np
 from helpers_match import match
 
 def runTest(ps, coarsen, get_approx, get_exact):
+    """
+    This function runs a test to compare the approximation of a function with its exact value.
+
+    Parameters:
+    ps (numpy array): The array of p-values at which the function is evaluated.
+    coarsen (int): The coarsening factor for the p-values.
+    get_approx (function): The function that computes the approximation.
+    get_exact (function): The function that computes the exact value.
+
+    Returns:
+    val_app (numpy array): The approximated values.
+    val_ref (numpy array): The exact values.
+    error (numpy array): The error between the approximated and exact values.
+    """
     ps_coarse = ps[::coarsen]
     val_app = np.empty((len(ps), 0), dtype = complex)
     val_ref = np.empty((len(ps_coarse), 0), dtype = complex)

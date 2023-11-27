@@ -8,7 +8,7 @@ from helpers_test import runTest
 from helpers_fenics import fenics2Sparse
 np.random.seed(42)
 
-# define problem
+# define problem of Section 6.2
 center, radius = 5., 2.
 class engine:
     def L(self, z, p):

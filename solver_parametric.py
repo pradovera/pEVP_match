@@ -4,24 +4,38 @@ from helpers_cluster import findClusters, mergeClusters
 from helpers_interp1d import interp1d_get_local_idx, interp1d_fast, interp1d_inf
 
 def matchData(data, return_dist):
-    # match data, even unbalanced
+    """
+    This function matches data, even if it's unbalanced. It matches the data with infinity where necessary to make it balanced.
+
+    Parameters:
+    data (list of numpy arrays): The data to be matched. Each element of the list is a numpy array of data points.
+    return_dist (bool): If True, the function also returns the distances between matched points.
+
+    Returns:
+    numpy array: The matched data. Each element of the array corresponds to the matched data points.
+    list (optional): The distances between matched points. Only returned if return_dist is True.
+    """
+    # If return_dist is True, initialize an empty list to store distances
     if return_dist: dists = []
+    
+    # Enumerate over the data
     for j, dataj in enumerate(data):
         dataj = data[j]
         Nj = len(dataj)
+        
+        # If this is the first element, store its length in N
         if j == 0:
             N = Nj
         else: # perform matching
-            if Nj < N: # too few new val: add inf values
+            if Nj < N: # If there are too few new values, add inf values
                 dataj = np.pad(dataj, [(0, N - Nj)], constant_values = np.inf)
-            elif len(dataj) > N: # too many new val
-                # will need to add inf values in old vals
-                # for now, we only add them to the last
+            elif len(dataj) > N: # If there are too many new values, match with previous
                 data[j - 1] = np.pad(data[j - 1], [(0, Nj - N)], constant_values = np.inf)
                 N = Nj
             # now the problem of matching data[j - 1] and dataj is balanced
             p_opt, d_opt = match(data[j - 1], dataj)
             data[j] = dataj[p_opt[1]]
+            # If return_dist is True, store the distances
             if return_dist: dists += [d_opt[:, p_opt[1]]]
     for j, dataj in enumerate(data): # add missing entries in unbalanced case
         Nj = len(dataj)
@@ -33,7 +47,19 @@ def matchData(data, return_dist):
     return np.array(data)
 
 def clusterMatchedData(p, data, dists, d_thresh, min_patch_deltap):
-    # cluster data after match
+    """
+    This function clusters matched data points based on their distances. It then merges nearby clusters.
+
+    Parameters:
+    p (numpy array): The array of data points.
+    data (list of numpy arrays): The matched data. Each element of the list is a numpy array of data points.
+    dists (list of numpy arrays): The distances between matched points. Each element of the list is a numpy array of distances.
+    d_thresh (float): The distance threshold for clustering. Points closer than this distance are considered part of the same cluster.
+    min_patch_deltap (float): The minimum distance between clusters for them to be considered separate.
+
+    Returns:
+    list of numpy arrays: The merged clusters. Each element of the list is a numpy array of data points in a cluster.
+    """
     clusters = []
     for d in dists:
         d_inf = np.isinf(np.diag(d))
@@ -48,18 +74,28 @@ def clusterMatchedData(p, data, dists, d_thresh, min_patch_deltap):
 
 def train(L, solve_nonpar, center, radius, interp_kind, patch_width, ps_start,
           tol, max_iter=100, d_thresh=1e-1, min_patch_deltap=1e-2):
-    # train approximation model with parameters:
-    # L: lambda function defining matrix in eigenproblem
-    # solve_nonpar: lambda function defining non-parametric eigensolver
-    # center: center of contour (disk)
-    # radius: radius of contour (disk)
-    # interp_kind: string label of p-interpolation type
-    # patch_width: width of stencil for interpolation
-    # ps_start: initial grid of sample p-points
-    # tol: tolerance epsilon for adaptivity
-    # max_iter: maximum number of adaptivity iterations
-    # d_thresh: tolerance delta for bifurcation
-    # min_patch_deltap: width of stencil for implicit bifurcation management
+    """
+    This function trains the approximation model with the data taken from the parametric eigenproblem.
+    
+    Parameters
+    L: lambda function defining matrix in eigenproblem
+    solve_nonpar: lambda function defining non-parametric eigensolver
+    center: center of contour (disk)
+    radius: radius of contour (disk)
+    interp_kind: string label of p-interpolation type
+    patch_width: width of stencil for interpolation
+    ps_start: initial grid of sample p-points
+    tol: tolerance epsilon for adaptivity
+    max_iter: maximum number of adaptivity iterations
+    d_thresh: tolerance delta for bifurcation
+    min_patch_deltap: width of stencil for implicit bifurcation management
+    
+    Returns:
+    model_out: The trained model
+    ps: The final grid of sample p-points
+    """
+    
+    # initial sampling grid for the parameters-points
     ps = np.array(ps_start)
     dps = ps[1:] - ps[:-1]
     if any(abs(dps - dps[0]) > 1e-10):
@@ -68,7 +104,7 @@ def train(L, solve_nonpar, center, radius, interp_kind, patch_width, ps_start,
     pre_next = list(range(len(ps_next)))
     dps_next = [.25 * dps[0]] * len(ps_next)
     
-    # initial sampling
+    
     data = []
     for p in ps:
         Lp = lambda z: L(z, p)
@@ -81,6 +117,7 @@ def train(L, solve_nonpar, center, radius, interp_kind, patch_width, ps_start,
                                       min_patch_deltap)
         model_out = (model_out[0], clusters)
     
+    # Adaptive refinement
     for _ in range(int(max_iter)):
         # test model
         print("Adaptive match iteration: test at {} point(s)".format(len(ps_next)))
@@ -139,14 +176,21 @@ def train(L, solve_nonpar, center, radius, interp_kind, patch_width, ps_start,
     return model_out, ps
 
 def evaluate(model, ps, p, center, radius, interp_kind, patch_width):
-    # evaluate approximation model with parameters:
-    # model: first output of "train" above
-    # ps: second output of "train" above
-    # p: value of p at which the evaluation is requested
-    # center: center of contour (disk)
-    # radius: radius of contour (disk)
-    # interp_kind: string label of p-interpolation type
-    # patch_width: width of stencil for interpolation
+    """
+    This function evaluates the approximated model for the given parametric eigenproblem.
+
+    Parameters:
+    model: The trained model.
+    ps: The final grid of sample p-points.
+    p: The value of p at which the evaluation is requested.
+    center: The center of the contour (disk).
+    radius: The radius of the contour (disk).
+    interp_kind: string label of p-interpolation type.
+    patch_width: The width of the stencil for interpolation.
+
+    Returns:
+    The evaluated values.
+    """
     S = len(ps)
     has_clusters = isinstance(model, tuple)
     j = interp1d_get_local_idx(p, ps, "previous")
@@ -157,10 +201,10 @@ def evaluate(model, ps, p, center, radius, interp_kind, patch_width):
         j_patch_end = min(S, j + (patch_width + 3) // 2)
     S_eff = j_patch_end - j_patch_start
     ps_eff = ps[j_patch_start : j_patch_end]
-    interp = interp1d_fast(p, ps_eff, interp_kind)
-    if has_clusters:
+    interp = interp1d_fast(p, ps_eff, interp_kind) # Initialize the interpolation
+    if has_clusters: # If the model has clusters, get the data and the cluster
         data, cluster = model[0], model[1][j]
-    else:
+    else: # If the model doesn't have clusters, get the data and create a cluster
         data, cluster = model, [[j] for j in range(model.shape[1])]
     N = data.shape[1]
     values = np.empty(N, dtype = complex)
