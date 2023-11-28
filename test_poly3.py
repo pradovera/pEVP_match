@@ -9,26 +9,29 @@ np.random.seed(42)
 A = np.array([[0, 0, 1], [1, 0, 2], [0, 1, 0]])
 B = np.array([[0, 0, -2], [0, 0, -1], [0, 0, 0]])
 C = np.eye(3)
+# parametric matrix L(z,p) that defines the pEVP
 L = lambda z, p: A + p * B - z * C
+
+# define parameter range
 p_range = [-50., 50.]
 
 # define parameters for training
-center, radius = 0., 4.
-l_sketch = 5
-lhs = np.random.randn(l_sketch, 3) + 1j * np.random.randn(l_sketch, 3)
-rhs = np.random.randn(3, l_sketch) + 1j * np.random.randn(3, l_sketch)
-train_nonpar = lambda L, center, radius: beyn(L, center, radius, lhs, rhs,
-                                              25, 1e-10, 1)
-tol, interp_kind, patch_width, min_patch_deltap = 1e-2, "linear", None, 5
+l_sketch = 5 # number of sketching directions in Beyn's method
+lhs = np.random.randn(l_sketch, 3) + 1j * np.random.randn(l_sketch, 3) # left sketching matrix
+rhs = np.random.randn(3, l_sketch) + 1j * np.random.randn(3, l_sketch) # right sketching matrix
+train_nonpar = lambda L, center, radius: beyn(L, center, radius, lhs, rhs, 25, 1e-10, 1)
+
+tol = 1e-2 # tolerance for outer adaptive loop
+interp_kind = "linear" # interpolation strategy (piecewise-linear hat functions)
+min_patch_deltap = 5 # minimum width of interpolation patches in case of bifurcations
 
 # train
-model, ps_train = train(L, train_nonpar, center, radius, interp_kind,
-                        patch_width, p_range, tol,
+model, ps_train = train(L, train_nonpar, 0., 4., interp_kind, None, p_range, tol,
                         min_patch_deltap = min_patch_deltap)
 
 # test
-ps = np.linspace(*p_range, 1500)
-getApprox = lambda p: evaluate(model, ps_train, p, center, radius, interp_kind, patch_width)
+ps = np.linspace(*p_range, 1500) # testing grid
+getApprox = lambda p: evaluate(model, ps_train, p, 0., 4., interp_kind, None)
 def getExact(p): # exact solution
     alpha = lambda p: (((3*(4*p**3+84*p**2-60*p-5+0j))**.5-18*p+9)/18) ** (1./3)
     beta = lambda p: (p-2)/3/alpha(p)
@@ -37,8 +40,8 @@ def getExact(p): # exact solution
     val2 = lambda p: -versor2*alpha(p)+versor1*beta(p)
     val3 = lambda p: -versor1*alpha(p)+versor2*beta(p)
     v_ref = np.array([val1(p), val2(p), val3(p)])
-    return v_ref[np.abs(v_ref - center) <= radius]
-val_app, val_ref, error = runTest(ps, 1, getApprox, getExact)
+    return v_ref[np.abs(v_ref) <= 4.]
+val_app, val_ref, error = runTest(ps, 1, getApprox, getExact) # run testing routine
 
 # plot approximation and error
 plt.figure(figsize = (15, 5))
