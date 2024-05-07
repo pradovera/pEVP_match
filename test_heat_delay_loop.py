@@ -33,11 +33,11 @@ else:
 if example_tag == "LINEAR":
     tols = np.logspace(-1, -6, 11)[: 8] # tolerance for outer adaptive loop
     interp_kind = "linear" # interpolation strategy (piecewise-linear hat functions)
-    patch_width = None # minimum width of interpolation patches (default value)
+    patch_width = None # minimum width of interpolation patches in case of bifurcations (default)
 elif example_tag == "SPLINE7":
     tols = np.logspace(-1, -6, 11) # tolerance for outer adaptive loop
     interp_kind = "spline7" # interpolation strategy (degree-7 splines)
-    patch_width = 11 # minimum width of interpolation patches
+    patch_width = 11 # minimum width of interpolation patches in case of bifurcations
 
 # train
 nps = []

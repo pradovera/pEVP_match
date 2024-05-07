@@ -44,12 +44,13 @@ def interp1d_fast(p, ps, interp_kind):
     Returns:
     function: A function that takes an array x and returns the interpolated value at p.
     """
+    if len(ps) == 1 and interp_kind == "linear":
+        raise Exception("not enough points")
     if interp_kind in ["linear", "nearest", "nearest-up", "previous", "next"]:
-        if p <= ps[0]: return lambda x: x[0] # clip to range
-        if p >= ps[-1]: return lambda x: x[-1] # clip to range
         j = interp1d_get_local_idx(p, ps, interp_kind)
-        if interp_kind != "linear": return lambda x: x[j]
+        if len(ps) == 1 or interp_kind != "linear": return lambda x: x[j]
         if ps[j] > p: j -= 1
+        j = min(len(ps) - 2, max(0, j)) # clip to range
         wp = (ps[j + 1] - p) / (ps[j + 1] - ps[j])
         w = 1. - wp
         return lambda x: wp * x[j] + w * x[j + 1]
@@ -105,32 +106,29 @@ def interp1d_inf(p, ps, values, interp_kind):
     # find local stencil where value is finite
     if ps[j] > p: j -= 1
     stencil_l, stencil_r = max(j + 1, 0), min(j + 1, S)
-    if j >= 0 and not isinf_eff(values[j]):
+    if j > -1 and not isinf_eff(values[j]):
         # we can try to widen stencil to the left
-        stencil_l = j - 1
-        for l in range(j - 1, -1, -1):
-            if isinf_eff(values[l]): break
-        stencil_l += 1
-    if j + 1 < S and not isinf_eff(values[j + 1]):
+        for stencil_l in range(j, 0, -1):
+            if isinf_eff(values[stencil_l - 1]): break
+        else:
+            stencil_l = 0
+    if j < S - 1 and not isinf_eff(values[j + 1]):
         # we can try to widen stencil to the right
-        stencil_r = j + 2
         for stencil_r in range(j + 2, S):
             if isinf_eff(values[stencil_r]): break
         else:
             stencil_r = S
+    if stencil_r <= stencil_l: # inf on both sides of j
+        return interp1d_inf(p, ps, values, "nearest") # revert to nearest neighbor
     # try to interpolate over stencil
-    if (j < 0 or stencil_l <= j) and (j + 1 >= S or stencil_r > j + 1):
-        # stencil contains p!
+    if ((stencil_l <= j + 1 and stencil_r > j) # stencil contains p or it almost does
+     or (j == -1 and stencil_l == 0) # p is left of stencil and range
+     or (j == S - 1 and stencil_r == S)): # p is right of stencil and range
         try:
             interp = interp1d_fast(p, ps[stencil_l : stencil_r], interp_kind)
             return interp(values[stencil_l : stencil_r])
         except:
             pass
-    # stencil is too small for correct interpolation at p
-    if (j < 0 or j + 1 >= S # outside range
-     or stencil_r < stencil_l + 1): # inf on both sides of j
-        # revert to nearest neighbor
-        return interp1d_inf(p, ps, values, "nearest")
     interp = interp1d_fast(p, ps[j : j + 2], "linear")
     if stencil_l <= j and stencil_r > j + 1: # no inf on either side of j
         # revert to linear interpolant on interval

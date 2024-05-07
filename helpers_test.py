@@ -24,25 +24,40 @@ def runTest(ps, coarsen, get_approx, get_exact):
     for j, p in enumerate(ps):
         v_app = get_approx(p)
         Napp = len(v_app)
-        if Napp > val_app.shape[1]: # enlarge arrays for storage
-            dN = Napp - val_app.shape[1]
+        dN = Napp - val_app.shape[1]
+        if dN > 0: # enlarge arrays for storage
             val_app = np.pad(val_app, [(0, 0), (0, dN)], constant_values = np.inf + 1j*np.inf)
-        val_app[j, : Napp] = v_app
+        elif dN < 0:
+            v_app = np.pad(v_app, (0, - dN), constant_values = np.inf + 1j*np.inf)
+            Napp = val_app.shape[1]
+        # sort v to follow trajectories (note: here val_app.shape[1] == len(v_app) so the match problem is square)
+        if j > 0:
+            p_opt, _ = match(val_app[j - 1, :], v_app)
+            v_app = v_app[p_opt[1]]
+        val_app[j, :] = v_app
         
         # compute error
         if not j % coarsen:
             v_ref = get_exact(p)
             Nref = len(v_ref)
-            if Nref > val_ref.shape[1]: # enlarge arrays for storage
-                dN = Nref - val_ref.shape[1]
+            dN = Nref - val_ref.shape[1]
+            if dN > 0: # enlarge arrays for storage
                 val_ref = np.pad(val_ref, [(0, 0), (0, dN)], constant_values = np.inf + 1j*np.inf)
                 error = np.pad(error, [(0, 0), (0, dN)], constant_values = np.nan)
-            val_ref[j // coarsen, : Nref] = v_ref
+            elif dN < 0:
+                v_ref = np.pad(v_ref, (0, - dN), constant_values = np.inf + 1j*np.inf)
+                Nref = val_ref.shape[1]
+            # sort v to follow trajectories (note: here val_ref.shape[1] == len(v_ref) so the match problem is square)
+            if j > 0:
+                p_opt, _ = match(val_ref[j // coarsen - 1, :], v_ref)
+                v_ref = v_ref[p_opt[1]]
+            val_ref[j // coarsen, :] = v_ref
 
             if Nref == Napp:
                 p_opt, d_opt = match(v_ref, v_app)
             elif Nref < Napp:
                 p_opt, d_opt = match(np.pad(v_ref, [(0, Napp - Nref)], constant_values = np.inf), v_app)
+                p_opt, d_opt = (p_opt[0][: Nref], p_opt[1][: Nref]), d_opt[: Nref] # remove extras
             else: #if Nref > Napp:
                 p_opt, d_opt = match(v_ref, np.pad(v_app, [(0, Nref - Napp)], constant_values = np.inf))
             error[j // coarsen, p_opt[0]] = d_opt[p_opt[0], p_opt[1]]

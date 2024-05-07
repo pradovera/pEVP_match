@@ -68,7 +68,7 @@ def clusterMatchedData(p, data, dists, d_thresh, min_patch_deltap):
     # find effective clusters on each patch by merging nearby clusters
     try:
         deltaps = p[1:] - p[:-1]
-    except:
+    except TypeError:
         deltaps = np.array([p[j + 1] - p[j] for j in range(len(p) - 1)])
     return mergeClusters(clusters, deltaps, min_patch_deltap)
 
@@ -123,7 +123,7 @@ def train(L, solve_nonpar, center, radius, interp_kind, patch_width, ps_start,
         print("Adaptive match iteration: test at {} point(s)".format(len(ps_next)))
         val_pre, val_ref = [], []
         for p in ps_next:
-            print(".", end = "")
+            print(".", end = "", flush = True)
             val_pre += [evaluate(model_out, ps, p, center, radius,
                                  interp_kind, patch_width)]
             Lp = lambda z: L(z, p)
@@ -196,37 +196,74 @@ def evaluate(model, ps, p, center, radius, interp_kind, patch_width):
     j = interp1d_get_local_idx(p, ps, "previous")
     if j >= S - 1: j = S - 2
     j_patch_start, j_patch_end = 0, S
-    if patch_width is not None: # width is patch_width + 1
-        j_patch_start = max(0, j - (patch_width - 1) // 2)
-        j_patch_end = min(S, j + (patch_width + 3) // 2)
-    S_eff = j_patch_end - j_patch_start
+    j_patch_start_wide, j_patch_end_wide = 0, S
+    if patch_width is not None:
+        j_patch_start = max(0, j - (patch_width - 1) // 2) # width is patch_width + 1
+        j_patch_end = min(S, j + (patch_width + 3) // 2) # width is patch_width + 1
+        j_patch_start_wide = max(0, j - patch_width) # width is 2 * patch_width + 1
+        j_patch_end_wide = min(S, j + patch_width + 1) # width is 2 * patch_width + 1
     ps_eff = ps[j_patch_start : j_patch_end]
+    ps_eff_wide = ps[j_patch_start_wide : j_patch_end_wide]
     interp = interp1d_fast(p, ps_eff, interp_kind) # Initialize the interpolation
     if has_clusters: # If the model has clusters, get the data and the cluster
         data, cluster = model[0], model[1][j]
     else: # If the model doesn't have clusters, get the data and create a cluster
         data, cluster = model, [[j] for j in range(model.shape[1])]
-    N = data.shape[1]
-    values = np.empty(N, dtype = complex)
+    values = np.empty(data.shape[1], dtype = complex)
 
     for c in cluster:
+        # find effective stencil by excluding inf values
+        inf_near = np.any(np.isinf(data[j : j + 2, c]), axis = 1) # check inf left and right
+        if inf_near[0] and inf_near[1]: # inf both left and right
+            values[c] = np.inf
+            continue
+        c_indirect = False
+        if inf_near[0] or inf_near[1]:
+            # rely on extrapolation of previous or next model (the one that has finite values)
+            cluster_try = min(S - 2, j + 1) if inf_near[0] else max(0, j - 1) # choose left or right
+            if has_clusters:
+                for c_eff in model[1][cluster_try]:
+                    if np.all([c_ in c_eff for c_ in c]):
+                       break
+                else: # too complex! bifurcation is changing with migrations involved
+                    values[c] = np.inf
+                    continue
+                # must check if other model has same cluster
+                if not np.all([c_eff_ in c for c_eff_ in c_eff]):
+                    c_indirect = True
+                    c_, c = c, c_eff # store c for later use and overwrite with other cluster
+            
+        inf_on_patch = np.any(np.isinf(data[j_patch_start : j_patch_end, c])) # check inf over whole patch
         if len(c) == 1: # explicit form
-            c_ = c[0]
-            if np.any(np.isinf(data[j_patch_start : j_patch_end, c_])):
-                values[c_] = interp1d_inf(p, ps_eff, data[j_patch_start : j_patch_end, c_], interp_kind)
+            if inf_on_patch:
+                values_ = interp1d_inf(p, ps_eff_wide, # use wide patch
+                                       data[j_patch_start_wide : j_patch_end_wide, c[0]], interp_kind)
             else:
-                values[c_] = interp(data[j_patch_start : j_patch_end, c_])
+                values_ = interp(data[j_patch_start : j_patch_end, c[0]])
         else: # implicit form
-            poly = np.empty((S_eff, len(c) + 1), dtype = complex)
-            for k in range(j_patch_start, j_patch_end):
-                poly[k - j_patch_start] = np.poly(data[k, c])
-            if np.any(np.isinf(data[j_patch_start : j_patch_end, c])):
-                poly_interpolated = interp1d_inf(p, ps_eff, poly, interp_kind)
+            # get local implicit forms
+            j_patch_start_ = j_patch_start_wide if inf_on_patch else j_patch_start
+            j_patch_end_ = j_patch_end_wide if inf_on_patch else j_patch_end
+            poly = np.empty((j_patch_end_ - j_patch_start_, len(c) + 1), dtype = complex)
+            for k in range(j_patch_start_, j_patch_end_):
+                poly[k - j_patch_start_] = np.poly(data[k, c])
+            # interpolate implicit forms
+            if inf_on_patch:
+                poly_interpolated = interp1d_inf(p, ps_eff_wide, poly, interp_kind) # use wide patch
                 poly_interpolated[0] = 1.
             else:
                 poly_interpolated = interp(poly)
+            # get implicitly defined eigenvalues
             try:
-                values[c] = np.roots(poly_interpolated)
+                values_ = np.roots(poly_interpolated)
             except np.linalg.LinAlgError:
-                values[c] = np.inf
+                values_ = [np.inf] * len(c)
+        if c_indirect: # values_ contains some extra unused values
+            # look at support values on the finite side
+            support_data = data[j + 1, c_] if inf_near[0] else data[j, c_]
+            for k, val_ref in zip(c_, support_data):
+                idx = np.argmin(np.abs(values_ - val_ref)) # closest predicted value
+                values[k] = values_[idx]
+        else:
+            values[c] = values_
     return values[np.abs(values - center) <= radius]

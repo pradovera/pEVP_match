@@ -1,10 +1,10 @@
 import numpy as np
 from numpy.linalg import eigvals, svd, solve
-from scipy.sparse.linalg import spsolve
+from scipy.sparse.linalg import factorized
 
 def solveLS(A, b):
     if isinstance(A, np.ndarray): return solve(A, b)
-    return spsolve(A, b)
+    return factorized(A)(b)
 
 def beyn(L, center, radius, lhs, rhs, N_quad, rank_tol, hankel = 1):
     """    

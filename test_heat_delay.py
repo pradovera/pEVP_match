@@ -33,11 +33,11 @@ else:
 if example_tag == "NORMAL":
     tol = 1e-2 # tolerance for outer adaptive loop
     interp_kind = "spline3" # interpolation strategy (cubic splines)
-    patch_width = 7 # minimum width of interpolation patches
+    patch_width = 7 # minimum width of interpolation patches in case of bifurcations
 elif example_tag == "FINE":
     tol = 1e-6 # tolerance for outer adaptive loop
     interp_kind = "spline7" # interpolation strategy (degree-7 splines)
-    patch_width = 11 # minimum width of interpolation patches
+    patch_width = 11 # minimum width of interpolation patches in case of bifurcations
 
 # train
 model, ps_train = train(L, train_nonpar, 0., 1., interp_kind, patch_width, p_range, tol)
@@ -47,8 +47,7 @@ ps = np.linspace(*p_range, 500) # testing grid
 ps_coarse = ps[::10] # coarse testing grid
 getApprox = lambda p: evaluate(model, ps_train, p, 0., 1., interp_kind, patch_width)
 def getExact(p): # reference solution
-    v_ref = train_nonpar(lambda z: L(z, p), 0., 1.)
-    return v_ref[np.abs(v_ref) <= 1.]
+    return train_nonpar(lambda z: L(z, p), 0., 1.)
 val_app, val_ref, error = runTest(ps, 10, getApprox, getExact) # run testing routine
 val_app, val_ref = val_app - 1, val_ref - 1 # shift to original range
 

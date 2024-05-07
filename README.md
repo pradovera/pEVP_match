@@ -57,3 +57,10 @@ Otherwise, one can simply run
 python3 test_heat_delay_loop.py
 ```
 and then input `$example_tag` later.
+
+### "Gun" example
+The fifth example can be run as
+```
+python3 test_gun.py
+```
+NOTE: the file `gun_data.mat` is a copy of [this file](https://github.com/ftisseur/nlevp/blob/master/private/gun.mat) from the NLEVP repository (copyright Timo Betcke, Nicholas J. Higham, Volker Mehrmann, Gian Maria Negri Porzio, Christian Schroeder and Francoise Tisseur).

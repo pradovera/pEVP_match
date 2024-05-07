@@ -66,7 +66,7 @@ train_nonpar = lambda L, center, radius: beyn(L, center, radius, *lhs_rhs(L), 20
 
 tol = 1e-2 # tolerance for outer adaptive loop
 interp_kind = "spline3" # interpolation strategy (cubic splines)
-patch_width = 7 # minimum width of interpolation patches
+patch_width = 7 # minimum width of interpolation patches in case of bifurcations
 
 # train
 model, ps_train = train(L, train_nonpar, 0., 2., interp_kind, patch_width, p_range, tol)
@@ -76,8 +76,7 @@ ps = np.linspace(*p_range, 200) # testing grid
 ps_coarse = ps[::10] # coarse testing grid
 getApprox = lambda p: evaluate(model, ps_train, p, 0., 2., interp_kind, patch_width)
 def getExact(p): # reference solution
-    v_ref = train_nonpar(lambda z: L(z, p), 0., 2.)
-    return np.sort(v_ref[np.abs(v_ref) <= 2.])
+    return train_nonpar(lambda z: L(z, p), 0., 2.)
 val_app, val_ref, error = runTest(ps, 10, getApprox, getExact) # run testing routine
 val_app, val_ref = val_app + 5, val_ref + 5 # shift to original range
 
